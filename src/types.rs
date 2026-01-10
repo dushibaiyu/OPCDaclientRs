@@ -1,30 +1,111 @@
-//! Core types for OPC DA Client operations
+//! 核心类型模块
+//! 
+//! 这个模块定义了 OPC DA 客户端库的核心数据类型。
+//! 包括值类型、质量指示器、错误类型和回调接口。
+//! 
+//! ## 主要类型
+//! 
+//! - `OpcValue`: OPC 值枚举，支持多种数据类型
+//! - `OpcQuality`: OPC 质量指示器
+//! - `OpcValueError`: 值转换错误
+//! - `OpcDataCallback`: 异步数据变化回调接口
+//! - `OpcCallbackContainer`: 回调容器（内部使用）
+//! 
+//! ## 类型转换
+//! 
+//! `OpcValue` 支持 `TryFrom` 转换到 Rust 原生类型，
+//! 方便用户将 OPC 值转换为具体的 Rust 类型。
 
 use std::sync::Arc;
 
-/// OPC value types supported by the library
+/// OPC 值类型，支持库支持的所有数据类型
+/// 
+/// 这个枚举表示 OPC 项可能具有的值类型。
+/// 每个变体对应一种特定的数据类型。
+/// 
+/// ## 支持的数据类型
+/// 
+/// - `Int16`: 16位有符号整数（-32768 到 32767）
+/// - `Int32`: 32位有符号整数（-2147483648 到 2147483647）
+/// - `Float`: 32位单精度浮点数（IEEE 754）
+/// - `Double`: 64位双精度浮点数（IEEE 754）
+/// - `String`: UTF-8 字符串
+/// 
+/// ## 示例
+/// 
+/// ```
+/// use opc_da_client::OpcValue;
+/// 
+/// // 创建各种类型的值
+/// let int_value = OpcValue::Int32(42);
+/// let float_value = OpcValue::Float(3.14);
+/// let string_value = OpcValue::String("Hello".to_string());
+/// 
+/// // 类型转换
+/// if let OpcValue::Int32(v) = int_value {
+///     println!("整数值: {}", v);
+/// }
+/// ```
 #[derive(Debug, Clone, PartialEq)]
 pub enum OpcValue {
-    /// 16-bit signed integer
+    /// 16位有符号整数
     Int16(i16),
-    /// 32-bit signed integer
+    /// 32位有符号整数
     Int32(i32),
-    /// 32-bit floating point number
+    /// 32位单精度浮点数
     Float(f32),
-    /// 64-bit floating point number
+    /// 64位双精度浮点数
     Double(f64),
-    /// String value
+    /// UTF-8 字符串
     String(String),
 }
 
-/// OPC data quality indicators
+/// OPC 数据质量指示器
+/// 
+/// 这个枚举表示 OPC 项值的质量状态。
+/// 质量信息对于判断数据的可靠性至关重要。
+/// 
+/// ## 质量等级
+/// 
+/// - `Good`: 良好质量，数据可靠
+/// - `Uncertain`: 不确定质量，数据可能有问题
+/// - `Bad`: 不良质量，数据不可靠
+/// 
+/// ## 质量位掩码
+/// 
+/// OPC 质量值使用位掩码编码：
+/// - 位 7-6: 质量等级 (00=Bad, 01=Uncertain, 11=Good)
+/// - 位 5-0: 子状态和限制状态
+/// 
+/// ## 示例
+/// 
+/// ```
+/// use opc_da_client::OpcQuality;
+/// 
+/// // 从原始质量值创建
+/// let quality = OpcQuality::from_raw(192); // Good quality
+/// assert_eq!(quality, OpcQuality::Good);
+/// 
+/// // 转换为原始值
+/// let raw = quality.to_raw();
+/// assert_eq!(raw, 192);
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OpcQuality {
-    /// Good quality data
+    /// 良好质量数据
+    /// 
+    /// 表示数据可靠，可以安全使用。
+    /// 对应的原始值: 192 (0xC0)
     Good,
-    /// Uncertain quality data
+    /// 不确定质量数据
+    /// 
+    /// 表示数据可能有问题，应谨慎使用。
+    /// 对应的原始值: 64 (0x40)
     Uncertain,
-    /// Bad quality data
+    /// 不良质量数据
+    /// 
+    /// 表示数据不可靠，不应使用。
+    /// 对应的原始值: 0 (0x00)
     Bad,
 }
 
@@ -45,6 +126,16 @@ impl OpcQuality {
             OpcQuality::Good => 192,
             OpcQuality::Uncertain => 64,
             OpcQuality::Bad => 0,
+        }
+    }
+}
+
+impl std::fmt::Display for OpcQuality {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            OpcQuality::Good => write!(f, "Good"),
+            OpcQuality::Uncertain => write!(f, "Uncertain"),
+            OpcQuality::Bad => write!(f, "Bad"),
         }
     }
 }
@@ -207,4 +298,95 @@ pub trait OpcDataCallback: Send + Sync {
 /// Internal callback container for FFI
 pub(crate) struct OpcCallbackContainer {
     pub callback: Arc<dyn OpcDataCallback>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn test_opc_value_creation() {
+        // Test creation of all value types
+        let int16_val = OpcValue::Int16(42);
+        let int32_val = OpcValue::Int32(1000);
+        let float_val = OpcValue::Float(3.14);
+        let double_val = OpcValue::Double(2.71828);
+        let string_val = OpcValue::String("test".to_string());
+        
+        assert_eq!(int16_val.type_name(), "Int16");
+        assert_eq!(int32_val.type_name(), "Int32");
+        assert_eq!(float_val.type_name(), "Float");
+        assert_eq!(double_val.type_name(), "Double");
+        assert_eq!(string_val.type_name(), "String");
+    }
+    
+    #[test]
+    fn test_opc_value_try_from() {
+        // Test successful conversions
+        let int32_val = OpcValue::Int32(123);
+        let result: Result<i32, _> = int32_val.try_into();
+        assert_eq!(result.unwrap(), 123);
+        
+        let double_val = OpcValue::Double(45.67);
+        let result: Result<f64, _> = double_val.try_into();
+        assert!((result.unwrap() - 45.67).abs() < 0.0001);
+        
+        let string_val = OpcValue::String("hello".to_string());
+        let result: Result<String, _> = string_val.try_into();
+        assert_eq!(result.unwrap(), "hello");
+    }
+    
+    #[test]
+    fn test_opc_value_try_from_failure() {
+        // Test failed conversions
+        let int32_val = OpcValue::Int32(123);
+        let result: Result<String, _> = int32_val.try_into();
+        assert!(result.is_err());
+        
+        let string_val = OpcValue::String("hello".to_string());
+        let result: Result<i32, _> = string_val.try_into();
+        assert!(result.is_err());
+    }
+    
+    #[test]
+    fn test_opc_quality_display() {
+        // Test quality display
+        assert_eq!(OpcQuality::Good.to_string(), "Good");
+        assert_eq!(OpcQuality::Uncertain.to_string(), "Uncertain");
+        assert_eq!(OpcQuality::Bad.to_string(), "Bad");
+    }
+    
+    #[test]
+    fn test_opc_value_error() {
+        // Test error creation
+        let error = OpcValueError::type_mismatch("Int32", "String");
+        assert!(error.to_string().contains("Int32"));
+        assert!(error.to_string().contains("String"));
+    }
+    
+    #[test]
+    fn test_opc_data_callback_trait() {
+        // Simple callback implementation for testing
+        struct TestCallback {
+            count: std::sync::atomic::AtomicUsize,
+        }
+        
+        impl OpcDataCallback for TestCallback {
+            fn on_data_change(&self, group_name: &str, item_name: &str, value: OpcValue, quality: OpcQuality) {
+                self.count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                println!("Callback: group={}, item={}, value={:?}, quality={:?}", 
+                         group_name, item_name, value, quality);
+            }
+        }
+        
+        let callback = TestCallback {
+            count: std::sync::atomic::AtomicUsize::new(0),
+        };
+        
+        // Test that trait is object safe
+        let _boxed: Box<dyn OpcDataCallback> = Box::new(callback);
+        
+        // This just verifies compilation - actual callback testing requires OPC server
+        assert!(true);
+    }
 }

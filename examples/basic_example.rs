@@ -1,5 +1,23 @@
-//! Basic example demonstrating OPC DA Client usage
-//! This example connects to an OPC server and reads/writes values.
+//! 基础示例：演示 OPC DA 客户端的基本用法
+//! 
+//! 这个示例展示了如何：
+//! 1. 创建 OPC 客户端
+//! 2. 连接到 OPC 服务器
+//! 3. 获取服务器状态和项列表
+//! 4. 创建 OPC 组和项
+//! 5. 读取和写入项值
+//! 
+//! ## 运行要求
+//! 
+//! 1. Windows 操作系统
+//! 2. 安装 OPC 仿真服务器（如 MatrikonOPC Simulation Server）
+//! 3. 服务器名称：通常为 "Matrikon.OPC.Simulation.1"
+//! 
+//! ## 运行命令
+//! 
+//! ```bash
+//! cargo run --example basic_example
+//! ```
 
 use opc_da_client::{OpcClient, OpcValue};
 
