@@ -105,6 +105,8 @@
 //! ## 许可证
 //! 
 //! Apache 2.0 许可证
+#[allow(unused_imports)]
+#[allow(unused)]
 
 pub mod error;
 pub mod types;
