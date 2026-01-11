@@ -58,8 +58,8 @@ use crate::utils;
 /// let item2 = group.add_item("Random.Int2")?;
 /// 
 /// // 读取项值
-/// let (value1, quality1) = group.read_sync(&item1)?;
-/// let (value2, quality2) = group.read_sync(&item2)?;
+/// let (value1, quality1, timestamp1) = group.read_sync(&item1)?;
+/// let (value2, quality2, timestamp2) = group.read_sync(&item2)?;
 /// ```
 pub struct OpcGroup {
     /// 指向底层 OPC 组对象的指针
@@ -155,8 +155,8 @@ impl OpcGroup {
     /// 
     /// impl OpcDataCallback for MyCallback {
     ///     fn on_data_change(&self, group_name: &str, item_name: &str, 
-    ///                       value: OpcValue, quality: OpcQuality) {
-    ///         println!("数据变化: {}:{} = {:?}", group_name, item_name, value);
+    ///                       value: OpcValue, quality: OpcQuality, timestamp: u64) {
+    ///         println!("数据变化: {}:{} = {:?} (质量: {:?}, 时间戳: {} ms)", group_name, item_name, value, quality, timestamp);
     ///     }
     /// }
     /// 

@@ -188,18 +188,21 @@ impl OpcGroup {
     ///
     /// # 示例
     /// ```
+    /// use std::sync::Arc;
+    /// 
     /// struct MyCallback;
     /// impl OpcDataCallback for MyCallback {
-    ///     fn on_data_change(&self, group_name: &str, item_name: &str, value: OpcValue, quality: OpcQuality) {
-    ///         println!("数据变化: {} - {} = {:?}", group_name, item_name, value);
+    ///     fn on_data_change(&self, group_name: &str, item_name: &str, value: OpcValue, quality: OpcQuality, timestamp: u64) {
+    ///         println!("数据变化: {} - {} = {:?} (质量: {:?}, 时间戳: {} ms)", group_name, item_name, value, quality, timestamp);
     ///     }
     /// }
     ///
-    /// group.enable_async_subscription(Box::new(MyCallback))?;
+    /// let callback = Arc::new(MyCallback);
+    /// group.enable_async_subscription(callback)?;
     /// ```
     pub fn enable_async_subscription(
         &self,
-        callback: Box<dyn OpcDataCallback>
+        callback: Arc<dyn OpcDataCallback>
     ) -> OpcResult<()>
 
     /// 手动刷新组数据
@@ -229,17 +232,18 @@ impl OpcItem {
     /// 同步读取项值
     ///
     /// # 返回值
-    /// - `Ok((OpcValue, OpcQuality))`: 读取成功
+    /// - `Ok((OpcValue, OpcQuality, u64))`: 读取成功
     ///   - 第一个元素: 项值
     ///   - 第二个元素: 数据质量
+    ///   - 第三个元素: 时间戳 (Unix毫秒)
     /// - `Err(OpcError)`: 读取失败
     ///
     /// # 示例
     /// ```
-    /// let (value, quality) = item.read_sync()?;
-    /// println!("值: {:?}, 质量: {:?}", value, quality);
+    /// let (value, quality, timestamp) = item.read_sync()?;
+    /// println!("值: {:?}, 质量: {:?}, 时间戳: {} ms", value, quality, timestamp);
     /// ```
-    pub fn read_sync(&self) -> OpcResult<(OpcValue, OpcQuality)>
+    pub fn read_sync(&self) -> OpcResult<(OpcValue, OpcQuality, u64)>
 
     /// 同步写入项值
     ///
@@ -451,13 +455,14 @@ pub trait OpcDataCallback: Send + Sync {
     /// - `item_name`: 项名称
     /// - `value`: 新的值
     /// - `quality`: 数据质量
+    /// - `timestamp`: 时间戳 (Unix毫秒)
     ///
     /// # 示例
     /// ```
     /// struct MyCallback;
     /// impl OpcDataCallback for MyCallback {
-    ///     fn on_data_change(&self, group_name: &str, item_name: &str, value: OpcValue, quality: OpcQuality) {
-    ///         println!("[{}] {} = {:?} (质量: {:?})", group_name, item_name, value, quality);
+    ///     fn on_data_change(&self, group_name: &str, item_name: &str, value: OpcValue, quality: OpcQuality, timestamp: u64) {
+    ///         println!("[{}] {} = {:?} (质量: {:?}, 时间戳: {} ms)", group_name, item_name, value, quality, timestamp);
     ///     }
     /// }
     /// ```
@@ -466,7 +471,8 @@ pub trait OpcDataCallback: Send + Sync {
         group_name: &str,
         item_name: &str,
         value: OpcValue,
-        quality: OpcQuality
+        quality: OpcQuality,
+        timestamp: u64
     );
 }
 ```
@@ -595,7 +601,7 @@ fn main() -> OpcResult<()> {
     let item = group.add_item("Bucket Brigade.UInt2")?;
     
     // 读写操作
-    let (value, quality) = item.read_sync()?;
+    let (value, quality, timestamp) = item.read_sync()?;
     item.write_sync(&OpcValue::Int32(100))?;
     
     Ok(())
@@ -611,8 +617,8 @@ use std::sync::Arc;
 struct DataLogger;
 
 impl OpcDataCallback for DataLogger {
-    fn on_data_change(&self, group_name: &str, item_name: &str, value: OpcValue, quality: OpcQuality) {
-        println!("[{}] {} = {:?} (质量: {:?})", group_name, item_name, value, quality);
+    fn on_data_change(&self, group_name: &str, item_name: &str, value: OpcValue, quality: OpcQuality, timestamp: u64) {
+        println!("[{}] {} = {:?} (质量: {:?}, 时间戳: {} ms)", group_name, item_name, value, quality, timestamp);
     }
 }
 
@@ -622,7 +628,7 @@ fn main() -> OpcResult<()> {
     let group = server.create_group("MonitorGroup", true, 500, 0.0)?;
     
     // 启用异步订阅
-    group.enable_async_subscription(Box::new(DataLogger))?;
+    group.enable_async_subscription(Arc::new(DataLogger))?;
     
     // 添加监控项
     group.add_item("Random.Int2")?;

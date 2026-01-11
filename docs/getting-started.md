@@ -53,16 +53,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("添加 OPC 项成功");
     
     // 6. 同步读取值
-    let (value, quality) = item.read_sync()?;
-    println!("读取值: {:?}, 质量: {:?}", value, quality);
+    let (value, quality, timestamp) = item.read_sync()?;
+    println!("读取值: {:?}, 质量: {:?}, 时间戳: {} ms", value, quality, timestamp);
     
     // 7. 同步写入值
     item.write_sync(&OpcValue::Int32(12345))?;
     println!("写入值成功");
     
     // 8. 再次读取验证
-    let (updated_value, updated_quality) = item.read_sync()?;
-    println!("更新后的值: {:?}, 质量: {:?}", updated_value, updated_quality);
+    let (updated_value, updated_quality, updated_timestamp) = item.read_sync()?;
+    println!("更新后的值: {:?}, 质量: {:?}, 时间戳: {} ms", updated_value, updated_quality, updated_timestamp);
     
     println!("示例程序执行成功!");
     Ok(())

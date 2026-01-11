@@ -41,8 +41,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let item = group.add_item("Bucket Brigade.UInt2")?;
     
     // 读取值
-    let (value, quality) = item.read_sync()?;
-    println!("值: {:?}, 质量: {:?}", value, quality);
+    let (value, quality, timestamp) = item.read_sync()?;
+    println!("值: {:?}, 质量: {:?}, 时间戳: {} ms", value, quality, timestamp);
     
     // 写入值
     item.write_sync(&OpcValue::Int32(12345))?;
@@ -61,8 +61,8 @@ use std::sync::Arc;
 struct MyCallback;
 
 impl OpcDataCallback for MyCallback {
-    fn on_data_change(&self, group_name: &str, item_name: &str, value: OpcValue, quality: OpcQuality) {
-        println!("数据已更改: {}:{} = {:?} ({:?})", group_name, item_name, value, quality);
+    fn on_data_change(&self, group_name: &str, item_name: &str, value: OpcValue, quality: OpcQuality, timestamp: u64) {
+        println!("数据已更改: {}:{} = {:?} ({:?}), 时间戳: {} ms", group_name, item_name, value, quality, timestamp);
     }
 }
 
@@ -112,14 +112,14 @@ OPC 项的容器，具有共享的属性。
 - `add_item(name) -> OpcResult<OpcItem>` - 向组中添加项
 - `enable_async_subscription(callback) -> OpcResult<()>` - 启用异步订阅
 - `refresh() -> OpcResult<()>` - 刷新组中的所有项
-- `read_sync(item) -> OpcResult<(OpcValue, OpcQuality)>` - 同步读取项值
+    - `read_sync(item) -> OpcResult<(OpcValue, OpcQuality, u64)>` - 同步读取项值，返回时间戳（Unix毫秒）
 - `write_sync(item, value) -> OpcResult<()>` - 同步写入项值
 
 #### `OpcItem` - OPC 项
 表示单个可读写的数据点。
 
 **主要方法**:
-- `read_sync() -> OpcResult<(OpcValue, OpcQuality)>` - 同步读取值
+    - `read_sync() -> OpcResult<(OpcValue, OpcQuality, u64)>` - 同步读取值，返回时间戳（Unix毫秒）
 - `write_sync(value) -> OpcResult<()>` - 同步写入值
 - `read_async() -> OpcResult<()>` - 异步读取值
 - `write_async(value) -> OpcResult<()>` - 异步写入值
@@ -155,7 +155,7 @@ OPC 项的容器，具有共享的属性。
 异步数据变化通知的回调接口。
 
 **需要实现的方法**:
-- `on_data_change(group_name, item_name, value, quality)` - 数据变化时调用
+- `on_data_change(group_name, item_name, value, quality, timestamp)` - 数据变化时调用
 
 ### 错误处理
 
@@ -316,7 +316,7 @@ fn read_value() -> OpcResult<i32> {
     let server = client.connect_to_local_server("Matrikon.OPC.Simulation.1")?;
     let group = server.create_group("Test", true, 1000, 0.0)?;
     let item = group.add_item("Bucket Brigade.UInt2")?;
-    let (value, quality) = item.read_sync()?;
+    let (value, quality, timestamp) = item.read_sync()?;
     
     match value {
         OpcValue::Int32(v) => Ok(v),
@@ -337,9 +337,9 @@ struct DataLogger;
 
 impl OpcDataCallback for DataLogger {
     fn on_data_change(&self, group_name: &str, item_name: &str, 
-                      value: OpcValue, quality: OpcQuality) {
+                      value: OpcValue, quality: OpcQuality, timestamp: u64) {
         // 注意：回调可能在后台线程中调用
-        println!("[{}/{}] {:?} ({:?})", group_name, item_name, value, quality);
+        println!("[{}/{}] {:?} ({:?}, 时间戳: {} ms)", group_name, item_name, value, quality, timestamp);
     }
 }
 

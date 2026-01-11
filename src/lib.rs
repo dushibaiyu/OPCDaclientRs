@@ -57,8 +57,8 @@
 //!     let item = group.add_item("Bucket Brigade.UInt2")?;
 //!     
 //!     // 5. 同步读取值
-//!     let (value, quality) = item.read_sync()?;
-//!     println!("读取值: {:?}, 质量: {:?}", value, quality);
+//!     let (value, quality, timestamp) = item.read_sync()?;
+//!     println!("读取值: {:?}, 质量: {:?}, 时间戳: {} ms", value, quality, timestamp);
 //!     
 //!     // 6. 同步写入值
 //!     item.write_sync(&OpcValue::Int32(12345))?;

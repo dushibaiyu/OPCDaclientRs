@@ -130,7 +130,7 @@ pub enum OpcQuality {
 #### OpcDataCallback trait
 ```rust
 pub trait OpcDataCallback: Send + Sync {
-    fn on_data_change(&self, group_name: &str, item_name: &str, value: OpcValue, quality: OpcQuality);
+    fn on_data_change(&self, group_name: &str, item_name: &str, value: OpcValue, quality: OpcQuality, timestamp: u64);
 }
 ```
 

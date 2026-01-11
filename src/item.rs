@@ -84,9 +84,10 @@ impl OpcItem {
     /// 这个方法阻塞当前线程，直到从服务器读取到项的值和质量。
     /// 
     /// # 返回值
-    /// - `Ok((value, quality))`: 成功读取值和质量
+    /// - `Ok((value, quality, timestamp))`: 成功读取值、质量和时间戳
     ///   - `value`: 项的值，类型为 `OpcValue`
     ///   - `quality`: 值的质量，类型为 `OpcQuality`
+    ///   - `timestamp`: 时间戳，Unix毫秒，类型为 `u64`
     /// - `Err(OpcError)`: 读取失败，可能的原因包括：
     ///   - 项不可读
     ///   - 服务器连接中断
@@ -103,8 +104,8 @@ impl OpcItem {
     /// let item = group.add_item("Bucket Brigade.UInt2")?;
     /// 
     /// match item.read_sync() {
-    ///     Ok((value, quality)) => {
-    ///         println!("读取成功: 值 = {:?}, 质量 = {:?}", value, quality);
+    ///     Ok((value, quality, timestamp)) => {
+    ///         println!("读取成功: 值 = {:?}, 质量 = {:?}, 时间戳 = {} ms", value, quality, timestamp);
     ///         // 可以将值转换为具体类型
     ///         if let Ok(int_value) = i32::try_from(value) {
     ///             println!("整数值: {}", int_value);
