@@ -73,11 +73,11 @@ use crate::types::{OpcValue, OpcQuality, OpcValueError};
     
     #[test]
     fn test_opc_value_raw_type() {
-        assert_eq!(OpcValue::Int16(0).raw_type(), 0);
-        assert_eq!(OpcValue::Int32(0).raw_type(), 1);
-        assert_eq!(OpcValue::Float(0.0).raw_type(), 2);
-        assert_eq!(OpcValue::Double(0.0).raw_type(), 3);
-        assert_eq!(OpcValue::String("".to_string()).raw_type(), 4);
+        assert_eq!(OpcValue::Int16(0).raw_type(), 2); // VT_I2
+        assert_eq!(OpcValue::Int32(0).raw_type(), 3); // VT_I4
+        assert_eq!(OpcValue::Float(0.0).raw_type(), 4); // VT_R4
+        assert_eq!(OpcValue::Double(0.0).raw_type(), 5); // VT_R8
+        assert_eq!(OpcValue::String("".to_string()).raw_type(), 8); // VT_BSTR
     }
 }
 
@@ -107,7 +107,7 @@ mod mock_tests {
     
     /// Mock callback for testing
     struct MockCallback {
-        pub calls: std::sync::Mutex<Vec<(String, String, OpcValue, OpcQuality)>>,
+        pub calls: std::sync::Mutex<Vec<(String, String, OpcValue, OpcQuality, u64)>>,
     }
     
     impl MockCallback {
@@ -117,18 +117,19 @@ mod mock_tests {
             }
         }
         
-        fn get_calls(&self) -> Vec<(String, String, OpcValue, OpcQuality)> {
+        fn get_calls(&self) -> Vec<(String, String, OpcValue, OpcQuality, u64)> {
             self.calls.lock().unwrap().clone()
         }
     }
     
     impl OpcDataCallback for MockCallback {
-        fn on_data_change(&self, group_name: &str, item_name: &str, value: OpcValue, quality: OpcQuality) {
+        fn on_data_change(&self, group_name: &str, item_name: &str, value: OpcValue, quality: OpcQuality, timestamp: u64) {
             self.calls.lock().unwrap().push((
                 group_name.to_string(),
                 item_name.to_string(),
                 value,
                 quality,
+                timestamp,
             ));
         }
     }
@@ -143,16 +144,18 @@ mod mock_tests {
             "TestItem",
             OpcValue::Int32(42),
             OpcQuality::Good,
+            0, // timestamp
         );
         
         let calls = callback.get_calls();
         assert_eq!(calls.len(), 1);
         
-        let (group_name, item_name, value, quality) = &calls[0];
+        let (group_name, item_name, value, quality, timestamp) = &calls[0];
         assert_eq!(group_name, "TestGroup");
         assert_eq!(item_name, "TestItem");
         assert_eq!(value, &OpcValue::Int32(42));
         assert_eq!(quality, &OpcQuality::Good);
+        assert_eq!(timestamp, &0);
     }
     
     #[test]

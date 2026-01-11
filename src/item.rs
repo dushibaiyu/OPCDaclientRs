@@ -142,10 +142,16 @@ impl OpcItem {
             let opc_value = OpcValue::from_raw(
                 temp_buffer.as_mut_ptr() as *mut std::ffi::c_void,
                 value_type,
+                false, // sync read: free_allocated_string_memory will handle freeing
             )?;
             
             // 将原始质量转换为 OpcQuality
             let opc_quality = OpcQuality::from_raw(quality);
+            
+            // 对于字符串类型，需要释放 C++ 分配的内存
+            // C++ 的 opc_item_read_sync() 为字符串分配了新内存
+            // 我们需要在转换后释放它
+            Self::free_allocated_string_memory(&mut temp_buffer, value_type);
             
             Ok((opc_value, opc_quality, timestamp_ms))
         } else {
@@ -153,16 +159,78 @@ impl OpcItem {
         }
     }
     
+    fn free_allocated_string_memory(temp_buffer: &mut [u8; 64], value_type: u32) {
+        const VT_BSTR: u32 = 8;
+        const VT_LPSTR: u32 = 30;
+        const VT_LPWSTR: u32 = 31;
+        
+        match value_type {
+            VT_BSTR | VT_LPWSTR => {
+                let ptr_ptr = temp_buffer.as_mut_ptr() as *mut *mut std::ffi::c_void;
+                unsafe {
+                    let allocated_ptr = *ptr_ptr;
+                    if !allocated_ptr.is_null() {
+                        let wstr_ptr = allocated_ptr as *mut u16;
+                        crate::ffi::opc_free_string(wstr_ptr);
+                    }
+                }
+            }
+            VT_LPSTR => {
+                let ptr_ptr = temp_buffer.as_mut_ptr() as *mut *mut std::ffi::c_void;
+                unsafe {
+                    let allocated_ptr = *ptr_ptr;
+                    if !allocated_ptr.is_null() {
+                        let ansi_ptr = allocated_ptr as *mut i8;
+                        crate::ffi::opc_free_string_ansi(ansi_ptr);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    
     /// Write item value synchronously
     pub fn write_sync(&self, value: &OpcValue) -> OpcResult<()> {
+        // Temporary holders for string data to keep them alive during FFI call
+        let mut _wide_holder: Option<Vec<u16>> = None;
+        let mut _ansi_holder: Option<std::ffi::CString> = None;
         let (value_ptr, value_type) = match value {
+            // Numeric types
+            OpcValue::Int8(v) => (v as *const i8 as *const std::ffi::c_void, value.raw_type()),
+            OpcValue::UInt8(v) => (v as *const u8 as *const std::ffi::c_void, value.raw_type()),
             OpcValue::Int16(v) => (v as *const i16 as *const std::ffi::c_void, value.raw_type()),
+            OpcValue::UInt16(v) => (v as *const u16 as *const std::ffi::c_void, value.raw_type()),
             OpcValue::Int32(v) => (v as *const i32 as *const std::ffi::c_void, value.raw_type()),
+            OpcValue::UInt32(v) => (v as *const u32 as *const std::ffi::c_void, value.raw_type()),
+            OpcValue::Int64(v) => (v as *const i64 as *const std::ffi::c_void, value.raw_type()),
+            OpcValue::UInt64(v) => (v as *const u64 as *const std::ffi::c_void, value.raw_type()),
+            OpcValue::INT(v) => (v as *const isize as *const std::ffi::c_void, value.raw_type()),
+            OpcValue::UINT(v) => (v as *const usize as *const std::ffi::c_void, value.raw_type()),
             OpcValue::Float(v) => (v as *const f32 as *const std::ffi::c_void, value.raw_type()),
             OpcValue::Double(v) => (v as *const f64 as *const std::ffi::c_void, value.raw_type()),
-            OpcValue::String(_) => {
-                // String handling would be more complex
-                return Err(OpcError::operation_failed("String writes not implemented in sync"));
+            OpcValue::Bool(v) => (v as *const bool as *const std::ffi::c_void, value.raw_type()),
+            OpcValue::Cy(v) => (v as *const i64 as *const std::ffi::c_void, value.raw_type()),
+            OpcValue::Date(v) => (v as *const f64 as *const std::ffi::c_void, value.raw_type()),
+            
+            // String types - need special handling
+            OpcValue::String(s) => {
+                let wide = crate::to_wide_string(s);
+                let ptr = wide.as_ptr();
+                _wide_holder = Some(wide);
+                let ptr_ptr: *const *const u16 = &ptr;
+                (ptr_ptr as *const std::ffi::c_void, value.raw_type())
+            }
+            // Decimal type - not implemented
+            OpcValue::Decimal(_) => {
+                return Err(OpcError::operation_failed("Decimal writes not implemented"));
+            }
+            
+            // Array types - not implemented
+            OpcValue::ArrayInt16(_) | OpcValue::ArrayUInt16(_) | OpcValue::ArrayInt32(_) |
+            OpcValue::ArrayUInt32(_) | OpcValue::ArrayInt64(_) | OpcValue::ArrayUInt64(_) |
+            OpcValue::ArrayFloat(_) | OpcValue::ArrayDouble(_) | OpcValue::ArrayBool(_) |
+            OpcValue::ArrayString(_) => {
+                return Err(OpcError::operation_failed("Array writes not implemented"));
             }
         };
         
@@ -192,14 +260,47 @@ impl OpcItem {
     
     /// Write item value asynchronously
     pub fn write_async(&self, value: &OpcValue) -> OpcResult<()> {
+        // Temporary holders for string data to keep them alive during FFI call
+        let mut _wide_holder: Option<Vec<u16>> = None;
+        let mut _ansi_holder: Option<std::ffi::CString> = None;
         let (value_ptr, value_type) = match value {
+            // Numeric types
+            OpcValue::Int8(v) => (v as *const i8 as *const std::ffi::c_void, value.raw_type()),
+            OpcValue::UInt8(v) => (v as *const u8 as *const std::ffi::c_void, value.raw_type()),
             OpcValue::Int16(v) => (v as *const i16 as *const std::ffi::c_void, value.raw_type()),
+            OpcValue::UInt16(v) => (v as *const u16 as *const std::ffi::c_void, value.raw_type()),
             OpcValue::Int32(v) => (v as *const i32 as *const std::ffi::c_void, value.raw_type()),
+            OpcValue::UInt32(v) => (v as *const u32 as *const std::ffi::c_void, value.raw_type()),
+            OpcValue::Int64(v) => (v as *const i64 as *const std::ffi::c_void, value.raw_type()),
+            OpcValue::UInt64(v) => (v as *const u64 as *const std::ffi::c_void, value.raw_type()),
+            OpcValue::INT(v) => (v as *const isize as *const std::ffi::c_void, value.raw_type()),
+            OpcValue::UINT(v) => (v as *const usize as *const std::ffi::c_void, value.raw_type()),
             OpcValue::Float(v) => (v as *const f32 as *const std::ffi::c_void, value.raw_type()),
             OpcValue::Double(v) => (v as *const f64 as *const std::ffi::c_void, value.raw_type()),
-            OpcValue::String(_) => {
-                // String handling would be more complex
-                return Err(OpcError::operation_failed("String writes not implemented in async"));
+            OpcValue::Bool(v) => (v as *const bool as *const std::ffi::c_void, value.raw_type()),
+            OpcValue::Cy(v) => (v as *const i64 as *const std::ffi::c_void, value.raw_type()),
+            OpcValue::Date(v) => (v as *const f64 as *const std::ffi::c_void, value.raw_type()),
+            
+            // String types - need special handling
+            OpcValue::String(s) => {
+                let wide = crate::to_wide_string(s);
+                let ptr = wide.as_ptr();
+                _wide_holder = Some(wide);
+                let ptr_ptr: *const *const u16 = &ptr;
+                (ptr_ptr as *const std::ffi::c_void, value.raw_type())
+            }
+        
+            // Decimal type - not implemented
+            OpcValue::Decimal(_) => {
+                return Err(OpcError::operation_failed("Decimal writes not implemented"));
+            }
+            
+            // Array types - not implemented
+            OpcValue::ArrayInt16(_) | OpcValue::ArrayUInt16(_) | OpcValue::ArrayInt32(_) |
+            OpcValue::ArrayUInt32(_) | OpcValue::ArrayInt64(_) | OpcValue::ArrayUInt64(_) |
+            OpcValue::ArrayFloat(_) | OpcValue::ArrayDouble(_) | OpcValue::ArrayBool(_) |
+            OpcValue::ArrayString(_) => {
+                return Err(OpcError::operation_failed("Array writes not implemented"));
             }
         };
         

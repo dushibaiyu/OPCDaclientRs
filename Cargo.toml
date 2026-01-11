@@ -13,5 +13,8 @@ thiserror = "2.0"
 anyhow = "1.0"
 pin-project = "1.0"
 
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62", features = [ "Win32_System", "Win32_Foundation","Win32_System_Ole","Win32_System_Com"]}
+
 [build-dependencies]
 anyhow = "1.0"

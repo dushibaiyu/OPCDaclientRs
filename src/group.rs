@@ -261,7 +261,7 @@ extern "C" fn opc_data_change_callback(
     let item_name_str = utils::from_wide_string(item_name);
     
     // Convert value and quality
-    let opc_value = match OpcValue::from_raw(value, value_type) {
+    let opc_value = match OpcValue::from_raw(value, value_type, true) {
         Ok(value) => value,
         Err(_) => OpcValue::Int32(0), // Default fallback on error
     };

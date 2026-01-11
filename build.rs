@@ -25,22 +25,25 @@ use anyhow::{Context, Result};
 use std::{env, path::PathBuf};
 
 fn main() -> Result<()> {
-    // 检查目标平台：OPC DA 仅支持 Windows
-    // 但在生成文档时跳过此检查
+    // Check target platform: OPC DA only supports Windows for actual FFI calls
+    // Allow compilation on non-Windows for type system development and testing
     if !cfg!(target_os = "windows") {
-        // 如果是文档生成模式，跳过平台检查
+        // If building documentation, skip platform check
         if env::var("DOCS_RS").is_ok() || env::var("CARGO_DOC").is_ok() {
             println!("cargo:warning=Documentation build on non-Windows platform");
             return Ok(());
         }
-        anyhow::bail!("opc-ffi only supports Windows");
+        // Allow compilation for type system testing without FFI
+        println!("cargo:warning=Compiling on non-Windows platform - FFI functionality will be limited");
+        println!("cargo:rustc-cfg=no_ffi");
+        return Ok(());
     }
 
-    // 确定目标架构
+    // Determine target architecture (Windows only)
     let arch = if cfg!(target_arch = "x86") {
-        "x86"  // 32位 Windows
+        "x86"  // 32-bit Windows
     } else if cfg!(target_arch = "x86_64") {
-        "x64"  // 64位 Windows
+        "x64"  // 64-bit Windows
     } else {
         anyhow::bail!("unsupported architecture");
     };
@@ -51,12 +54,12 @@ fn main() -> Result<()> {
         anyhow::bail!("{:?} not found", lib_dir);
     }
 
-    // 告诉 cargo 去这里找 .lib
+    // Tell cargo where to find the .lib file
     println!("cargo:rustc-link-search=native={}", lib_dir.display());
-    // 告诉 cargo 要链接的库名字（去掉前缀和后缀）
+    // Tell cargo to link this library
     println!("cargo:rustc-link-lib=dylib=OPCClientToolKit");
 
-    // 若 DLL 不在 PATH，可把它拷贝到 target/{debug/release} 目录
+    // If DLL is not in PATH, copy it to target/{debug/release} directory
     let dll_name = "OPCClientToolKit.dll";
     let out_dir = PathBuf::from(env::var("OUT_DIR")?);
     std::fs::copy(lib_dir.join(dll_name), out_dir.join(dll_name))

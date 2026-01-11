@@ -423,7 +423,101 @@ mod ffi {
         /// # 参数
         /// - `str`: 要释放的字符串指针
         pub fn opc_free_string(str: *mut u16);
+        
+        /// 释放 ANSI 字符串
+        /// 
+        /// # 参数
+        /// - `str`: 要释放的 ANSI 字符串指针
+        pub fn opc_free_string_ansi(str: *mut i8);
     }
+}
+
+// Non-Windows stub FFI module (production)
+// This provides stub implementations that return errors for all operations
+#[cfg(all(not(windows), not(test)))]
+mod ffi {
+    use std::ffi::c_void;
+    
+    // Stub function implementations that return errors for non-Windows platforms
+    // Note: Function signatures must exactly match the Windows version
+    
+    // Client functions
+    pub unsafe fn opc_client_init() -> u32 { 1 } // OPC_RESULT_ERROR
+    pub unsafe fn opc_client_stop() { }
+    
+    // Host functions
+    pub unsafe fn opc_make_host(_hostname: *const u16, _host: *mut *mut c_void) -> u32 { 1 }
+    pub unsafe fn opc_host_free(_host: *mut c_void) { }
+    pub unsafe fn opc_host_connect_da_server(
+        _host: *mut c_void,
+        _server_name: *const u16,
+        _server: *mut *mut c_void
+    ) -> u32 { 1 }
+    
+    // Server functions
+    pub unsafe fn opc_server_free(_server: *mut c_void) { }
+    pub unsafe fn opc_server_get_status(
+        _server: *mut c_void,
+        _state: *mut u32,
+        _vendor_info: *mut *mut u16
+    ) -> u32 { 1 }
+    pub unsafe fn opc_server_make_group(
+        _server: *mut c_void,
+        _group_name: *const u16,
+        _active: i32,
+        _requested_update_rate: u32,
+        _actual_update_rate: *mut u32,
+        _deadband: f64,
+        _group: *mut *mut c_void
+    ) -> u32 { 1 }
+    pub unsafe fn opc_server_get_item_names(
+        _server: *mut c_void,
+        _item_names: *mut *mut *mut u16,
+        _count: *mut u32
+    ) -> u32 { 1 }
+    
+    // Group functions
+    pub unsafe fn opc_group_free(_group: *mut c_void) { }
+    pub unsafe fn opc_group_add_item(
+        _group: *mut c_void,
+        _item_name: *const u16,
+        _item: *mut *mut c_void
+    ) -> u32 { 1 }
+    pub unsafe fn opc_group_enable_async(
+        _group: *mut c_void,
+        _callback: extern "C" fn(*mut c_void, *const u16, *const u16, *mut c_void, i32, u32, u64),
+        _user_data: *mut c_void
+    ) -> u32 { 1 }
+    pub unsafe fn opc_group_refresh(_group: *mut c_void) -> u32 { 1 }
+    
+    // Item functions
+    pub unsafe fn opc_item_free(_item: *mut c_void) { }
+    pub unsafe fn opc_item_read_sync(
+        _item: *mut c_void,
+        _value: *mut c_void,
+        _quality: *mut i32,
+        _value_type: *mut u32,
+        _timestamp_ms: *mut u64,
+    ) -> u32 { 1 }
+    pub unsafe fn opc_item_write_sync(_item: *mut c_void, _value: *const c_void, _value_type: u32) -> u32 { 1 }
+    pub unsafe fn opc_item_read_async(_item: *mut c_void) -> u32 { 1 }
+    pub unsafe fn opc_item_write_async(_item: *mut c_void, _value: *const c_void, _value_type: u32) -> u32 { 1 }
+    
+    // Utility functions
+    pub unsafe fn opc_free_string_array(_strings: *mut *mut u16, _count: u32) { }
+    pub unsafe fn opc_free_string(_str: *mut u16) { }
+    pub unsafe fn opc_free_string_ansi(_str: *mut i8) { }
+    
+    // Callback function type
+    pub extern "C" fn opc_data_change_callback(
+        _user_data: *mut c_void,
+        _group_name: *const u16,
+        _item_name: *const u16,
+        _value: *mut c_void,
+        _quality: i32,
+        _value_type: u32,
+        _timestamp_ms: u64
+    ) { }
 }
 
 // 工具函数模块
@@ -618,6 +712,7 @@ mod ffi {
     // 工具函数
     pub unsafe fn opc_free_string_array(_strings: *mut *mut u16, _count: u32) { }
     pub unsafe fn opc_free_string(_str: *mut u16) { }
+    pub unsafe fn opc_free_string_ansi(_str: *mut i8) { }
     
     // 回调函数类型
     pub extern "C" fn opc_data_change_callback(
