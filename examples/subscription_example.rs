@@ -1,7 +1,7 @@
 //! Example demonstrating OPC DA Client subscription functionality
 //! This example connects to an OPC server and subscribes to data changes.
 
-use opc_da_client::{OpcClient, OpcValue, OpcQuality, OpcDataCallback};
+use OPCDaclientRs::{OpcClient, OpcValue, OpcQuality, OpcDataCallback};
 use std::sync::Arc;
 use std::time::Duration;
 use std::thread;
@@ -10,10 +10,10 @@ use std::thread;
 struct DataChangeCallback;
 
 impl OpcDataCallback for DataChangeCallback {
-    fn on_data_change(&self, group_name: &str, item_name: &str, value: OpcValue, quality: OpcQuality) {
+    fn on_data_change(&self, group_name: &str, item_name: &str, value: OpcValue, quality: OpcQuality, timestamp: u64) {
         println!(
-            "Data Change - Group: '{}', Item: '{}', Value: {:?}, Quality: {:?}",
-            group_name, item_name, value, quality
+            "Data Change - Group: '{}', Item: '{}', Value: {:?}, Quality: {:?}, Timestamp: {} ms",
+            group_name, item_name, value, quality, timestamp
         );
     }
 }
@@ -48,7 +48,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Created OPC group");
     
     // Add an item to the group
-    let item_name = if item_names.contains(&"Bucket Brigade.UInt2".to_string()) {
+    let item_name = if item_names.contains(&"Bucket Brigade.Int2".to_string()) {
         "Bucket Brigade.UInt2"
     } else if !item_names.is_empty() {
         &item_names[0]
@@ -77,8 +77,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         
         // Read back to verify
         match item.read_sync() {
-            Ok((value, quality)) => {
-                println!("Read value: {:?}, Quality: {:?}", value, quality);
+            Ok((value, quality, timestamp)) => {
+                println!("Read value: {:?}, Quality: {:?}, Timestamp: {} ms", value, quality, timestamp);
             }
             Err(e) => println!("Failed to read: {}", e),
         }

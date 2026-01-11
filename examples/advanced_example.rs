@@ -19,7 +19,7 @@
 //! cargo run --example advanced_example
 //! ```
 
-use opc_da_client::{OpcClient, OpcValue, OpcQuality, OpcDataCallback};
+use OPCDaclientRs::{OpcClient, OpcValue, OpcQuality, OpcDataCallback};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -45,13 +45,13 @@ impl DataCallbackHandler {
 }
 
 impl OpcDataCallback for DataCallbackHandler {
-    fn on_data_change(&self, item_name: &str, value: OpcValue, quality: OpcQuality, timestamp: u64) {
+    fn on_data_change(&self, group_name: &str, item_name: &str, value: OpcValue, quality: OpcQuality, timestamp: u64) {
         let mut count = self.callback_count.lock().unwrap();
         *count += 1;
         
         println!(
-            "[{}] 数据变化 #{:03}: 项名={}, 值={:?}, 质量={:?}, 时间戳={}",
-            self.name, *count, item_name, value, quality, timestamp
+            "[{}] 数据变化 #{:03}: 组名={}, 项名={}, 值={:?}, 质量={:?}, 时间戳={}",
+            self.name, *count, group_name, item_name, value, quality, timestamp
         );
     }
 }
@@ -177,8 +177,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     for (item_name, item) in &all_items {
         match item.read_sync() {
-            Ok((value, quality)) => {
-                println!("  {}: 值={:?}, 质量={:?}", item_name, value, quality);
+            Ok((value, quality, timestamp)) => {
+                println!("  {}: 值={:?}, 质量={:?}, 时间戳={}", item_name, value, quality, timestamp);
             }
             Err(e) => {
                 println!("  {}: 读取失败: {}", item_name, e);
@@ -195,7 +195,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     // 为第一个组启用异步订阅
     if let Some((group_name, group)) = all_groups.first() {
-        match group.enable_async_subscription(Box::new(callback_handler)) {
+        match group.enable_async_subscription(Arc::new(callback_handler)) {
             Ok(_) => {
                 println!("✓ 在组 '{}' 上启用异步订阅", group_name);
                 

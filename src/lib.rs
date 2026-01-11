@@ -310,6 +310,7 @@ mod ffi {
             value: *mut c_void,
             quality: *mut i32,
             value_type: *mut u32,
+            timestamp_ms: *mut u64,
         ) -> u32;
         
         /// 同步写入项值
@@ -340,7 +341,7 @@ mod ffi {
         /// - 非0: 错误码
         pub fn opc_group_enable_async(
             group: *mut c_void,
-            callback: extern "C" fn(*mut c_void, *const u16, *const u16, *mut c_void, i32, u32),
+            callback: extern "C" fn(*mut c_void, *const u16, *const u16, *mut c_void, i32, u32, u64),
             user_data: *mut c_void,
         ) -> u32;
         
@@ -596,7 +597,7 @@ mod ffi {
     ) -> u32 { 0 }
     pub unsafe fn opc_group_enable_async(
         _group: *mut c_void,
-        _callback: extern "C" fn(*mut c_void, *const u16, *const u16, *mut c_void, i32, u32),
+        _callback: extern "C" fn(*mut c_void, *const u16, *const u16, *mut c_void, i32, u32, u64),
         _user_data: *mut c_void
     ) -> u32 { 0 }
     pub unsafe fn opc_group_refresh(_group: *mut c_void) -> u32 { 0 }
@@ -608,6 +609,7 @@ mod ffi {
         _value: *mut c_void,
         _quality: *mut i32,
         _value_type: *mut u32,
+        _timestamp_ms: *mut u64,
     ) -> u32 { 0 }
     pub unsafe fn opc_item_write_sync(_item: *mut c_void, _value: *const c_void, _value_type: u32) -> u32 { 0 }
     pub unsafe fn opc_item_read_async(_item: *mut c_void) -> u32 { 0 }
@@ -624,6 +626,7 @@ mod ffi {
         _item_name: *const u16,
         _value: *mut c_void,
         _quality: i32,
-        _timestamp: u32
+        _value_type: u32,
+        _timestamp_ms: u64
     ) { }
 }

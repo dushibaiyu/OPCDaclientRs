@@ -215,7 +215,7 @@ impl OpcGroup {
     }
     
     /// Read item value synchronously
-    pub fn read_sync(&self, item: &OpcItem) -> OpcResult<(OpcValue, OpcQuality)> {
+    pub fn read_sync(&self, item: &OpcItem) -> OpcResult<(OpcValue, OpcQuality, u64)> {
         item.read_sync()
     }
     
@@ -247,6 +247,7 @@ extern "C" fn opc_data_change_callback(
     value: *mut std::ffi::c_void,
     quality: i32,
     value_type: u32,
+    timestamp_ms: u64,
 ) {
     if user_data.is_null() {
         return;
@@ -268,5 +269,5 @@ extern "C" fn opc_data_change_callback(
     let opc_quality = OpcQuality::from_raw(quality);
     
     // Call the user-provided callback
-    container.callback.on_data_change(&group_name_str, &item_name_str, opc_value, opc_quality);
+    container.callback.on_data_change(&group_name_str, &item_name_str, opc_value, opc_quality, timestamp_ms);
 }

@@ -118,11 +118,12 @@ impl OpcItem {
     /// - 这是阻塞操作，在慢速网络上可能会有延迟
     /// - 返回的值需要根据类型进行转换
     /// - 质量指示数据的可靠性
-    pub fn read_sync(&self) -> OpcResult<(OpcValue, OpcQuality)> {
+    pub fn read_sync(&self) -> OpcResult<(OpcValue, OpcQuality, u64)> {
         // 创建临时缓冲区存储值（64字节足够大多数类型）
         let mut temp_buffer: [u8; 64] = [0; 64];
         let mut quality: i32 = 0;
         let mut value_type: u32 = 0;
+        let mut timestamp_ms: u64 = 0;
         
         // 调用 FFI 函数同步读取
         let result = unsafe {
@@ -131,6 +132,7 @@ impl OpcItem {
                 temp_buffer.as_mut_ptr() as *mut std::ffi::c_void,
                 &mut quality,
                 &mut value_type,
+                &mut timestamp_ms,
             )
         };
         
@@ -144,7 +146,7 @@ impl OpcItem {
             // 将原始质量转换为 OpcQuality
             let opc_quality = OpcQuality::from_raw(quality);
             
-            Ok((opc_value, opc_quality))
+            Ok((opc_value, opc_quality, timestamp_ms))
         } else {
             Err(OpcError::operation_failed("Failed to read item synchronously"))
         }

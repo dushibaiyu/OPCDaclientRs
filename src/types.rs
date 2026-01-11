@@ -292,7 +292,7 @@ impl OpcValue {
 /// Callback trait for asynchronous data changes
 pub trait OpcDataCallback: Send + Sync {
     /// Called when data changes for subscribed items
-    fn on_data_change(&self, group_name: &str, item_name: &str, value: OpcValue, quality: OpcQuality);
+    fn on_data_change(&self, group_name: &str, item_name: &str, value: OpcValue, quality: OpcQuality, timestamp: u64);
 }
 
 /// Internal callback container for FFI
@@ -372,10 +372,10 @@ mod tests {
         }
         
         impl OpcDataCallback for TestCallback {
-            fn on_data_change(&self, group_name: &str, item_name: &str, value: OpcValue, quality: OpcQuality) {
+            fn on_data_change(&self, group_name: &str, item_name: &str, value: OpcValue, quality: OpcQuality, timestamp: u64) {
                 self.count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-                println!("Callback: group={}, item={}, value={:?}, quality={:?}", 
-                         group_name, item_name, value, quality);
+                println!("Callback: group={}, item={}, value={:?}, quality={:?}, timestamp={}", 
+                         group_name, item_name, value, quality, timestamp);
             }
         }
         

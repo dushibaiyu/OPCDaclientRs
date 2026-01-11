@@ -19,7 +19,7 @@
 //! cargo run --example basic_example
 //! ```
 
-use opc_da_client::{OpcClient, OpcValue};
+use OPCDaclientRs::{OpcClient, OpcValue};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create a client
@@ -47,13 +47,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     // Add an item to the group
     // Example item names from simulation servers: "Bucket Brigade.UInt2", "Random.Int2", etc.
-    let item = group.add_item("Bucket Brigade.UInt2")?;
+    let item = group.add_item("Bucket Brigade.Int2")?;
     println!("Added item to group");
     
     // Read current value
     match item.read_sync() {
-        Ok((value, quality)) => {
-            println!("Current value: {:?}, Quality: {:?}", value, quality);
+        Ok((value, quality, timestamp)) => {
+            println!("Current value: {:?}, Quality: {:?}, Timestamp: {} ms", value, quality, timestamp);
             
             // Write a new value (if it's an integer type)
             if let OpcValue::Int32(current) = value {
@@ -62,8 +62,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 println!("Wrote new value: {:?}", new_value);
                 
                 // Read back to verify
-                let (updated_value, updated_quality) = item.read_sync()?;
-                println!("Updated value: {:?}, Quality: {:?}", updated_value, updated_quality);
+                let (updated_value, updated_quality, updated_timestamp) = item.read_sync()?;
+                println!("Updated value: {:?}, Quality: {:?}, Timestamp: {} ms", updated_value, updated_quality, updated_timestamp);
             }
         }
         Err(e) => println!("Failed to read item: {}", e),
