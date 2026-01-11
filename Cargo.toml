@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 description = "Rust wrapper for OPC DA Client library with simplified API, async support, and subscription capabilities"
 license = "Apache 2.0 "
+links = "OPCClientToolKit"
 
 [lib]
 crate-type = ["rlib", "cdylib"]

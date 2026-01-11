@@ -21,6 +21,21 @@
 
 
 ## 快速入门
+### 在build.rs中添加：
+需要在build.rs中添加链接选项，否则会链接错误
+``` rust
+ //  从环境变量获取路径（如果 OPCDaclientRs 设置了）
+        if let Ok(libdir) = env::var("DEP_OPCCLIENTTOOLKIT_LIBDIR") {
+            println!("cargo:rustc-link-search=native={}", libdir);
+            println!("cargo:rustc-link-lib=dylib=OPCClientToolKit");
+            
+            return;
+        }
+        
+        // 如果没找到，输出警告但继续编译
+        println!("cargo:warning=OPCClientToolKit library not found. OPC DA features will not work at runtime.");
+        println!("cargo:warning=Please ensure OPCClientToolKit.dll and OPCClientToolKit.lib are available.");
+```
 
 ### 基本同步用法
 
